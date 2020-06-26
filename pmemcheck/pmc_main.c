@@ -1152,8 +1152,15 @@ add_event_dw(IRSB *sb, IRAtom *daddr, Int dsize, IRAtom *value)
 static void
 do_fence(void)
 {
-    if (pmem.log_stores)
+    if (pmem.log_stores) {
         VG_(emit)("|FENCE");
+        // iangneal: Improve trace information.
+        if (pmem.store_traces) {
+            struct pmem_st fence = {0};
+            fence.context = VG_(record_ExeContext)(VG_(get_running_tid)(), 0);
+            pp_store_trace(&fence, pmem.store_traces_depth);
+        }
+    }
 
     /* go through the stores and remove all flushed */
     VG_(OSetGen_ResetIter)(pmem.pmem_stores);
@@ -1185,6 +1192,9 @@ do_flush(UWord base, UWord size)
 {
     struct pmem_st flush_info = {0};
 
+    // iangneal: so we can do the tracing
+    flush_info.context = VG_(record_ExeContext)(VG_(get_running_tid)(), 0);
+
     if (LIKELY(pmem.force_flush_align == False)) {
         flush_info.addr = base;
         flush_info.size = size;
@@ -1194,8 +1204,13 @@ do_flush(UWord base, UWord size)
         flush_info.size = roundup(size, pmem.flush_align_size);
     }
 
-    if (pmem.log_stores)
+    if (pmem.log_stores) {
         VG_(emit)("|FLUSH;0x%lx;0x%llx", flush_info.addr, flush_info.size);
+        // iangneal: improve traces
+        if (pmem.store_traces) {
+            pp_store_trace(&flush_info, pmem.store_traces_depth);
+        }      
+    }
 
     Bool valid_flush = False;
 
