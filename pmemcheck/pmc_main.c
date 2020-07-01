@@ -1192,9 +1192,6 @@ do_flush(UWord base, UWord size)
 {
     struct pmem_st flush_info = {0};
 
-    // iangneal: so we can do the tracing
-    flush_info.context = VG_(record_ExeContext)(VG_(get_running_tid)(), 0);
-
     if (LIKELY(pmem.force_flush_align == False)) {
         flush_info.addr = base;
         flush_info.size = size;
@@ -1208,7 +1205,9 @@ do_flush(UWord base, UWord size)
         VG_(emit)("|FLUSH;0x%lx;0x%llx", flush_info.addr, flush_info.size);
         // iangneal: improve traces
         if (pmem.store_traces) {
-            pp_store_trace(&flush_info, pmem.store_traces_depth);
+            struct pmem_st flush_loc = {0};
+            flush_loc.context = VG_(record_ExeContext)(VG_(get_running_tid)(), 0);
+            pp_store_trace(&flush_loc, pmem.store_traces_depth);
         }      
     }
 
@@ -2087,13 +2086,14 @@ pmc_post_clo_init(void)
 static void
 pmc_print_usage(void)
 {
+    // iangneal: change to make tracing default
     VG_(printf)(
             "    --indiff=<uint>                        multiple store indifference\n"
             "                                           default [0 SBlocks]\n"
             "    --mult-stores=<yes|no>                 track multiple stores to the same\n"
             "                                           address default [no]\n"
             "    --log-stores=<yes|no>                  log all stores to persistence\n"
-            "                                           default [no]\n"
+            "                                           default [yes]\n"
             "    --log-stores-stacktraces=<yes|no>      dump stacktrace with each logged store\n"
             "                                           default [no]\n"
             "    --log-stores-stacktraces-depth=<uint>  depth of logged stacktraces\n"
@@ -2155,6 +2155,9 @@ pmc_pre_clo_init(void)
     VG_(details_avg_translation_sizeB)(275);
 
     VG_(basic_tool_funcs)(pmc_post_clo_init, pmc_instrument, pmc_fini);
+
+    // iangneal: default true for log_stores
+    pmem.log_stores = True;
 
     VG_(needs_command_line_options)(pmc_process_cmd_line_option,
             pmc_print_usage, pmc_print_debug_usage);
