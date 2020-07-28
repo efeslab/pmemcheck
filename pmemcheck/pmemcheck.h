@@ -101,6 +101,10 @@ typedef
 #define VALGRIND_PMC_DO_FENCE                                               \
     VALGRIND_DO_CLIENT_REQUEST_STMT(VG_USERREQ__PMC_DO_FENCE,               \
                                     0, 0, 0, 0, 0)
+/** 
+ * To support legacy PMDK, make DO_COMMIT a no-op.
+ */
+#define VALGRIND_PMC_DO_COMMIT while(0)
 
 /** Write tool stats */
 #define VALGRIND_PMC_WRITE_STATS                                            \
