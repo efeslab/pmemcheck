@@ -2090,7 +2090,7 @@ pmc_print_usage(void)
             "    --log-stores-stacktraces=<yes|no>      dump stacktrace with each logged store\n"
             "                                           default [no]\n"
             "    --log-stores-stacktraces-depth=<uint>  depth of logged stacktraces\n"
-            "                                           default [1]\n"
+            "                                           default [100]\n"
             "    --print-summary=<yes|no>               print summary on program exit\n"
             "                                           default [yes]\n"
             "    --flush-check=<yes|no>                 register multiple flushes of stores\n"
@@ -2149,9 +2149,6 @@ pmc_pre_clo_init(void)
 
     VG_(basic_tool_funcs)(pmc_post_clo_init, pmc_instrument, pmc_fini);
 
-    // iangneal: default true for log_stores
-    pmem.log_stores = True;
-
     VG_(needs_command_line_options)(pmc_process_cmd_line_option,
             pmc_print_usage, pmc_print_debug_usage);
 
@@ -2165,9 +2162,15 @@ pmc_pre_clo_init(void)
     tl_assert(sizeof(Word) == 8);
 
     pmem.print_summary = True;
-    pmem.store_traces_depth = 1;
+    // (iangneal): changed from 1 -> 100
+    pmem.store_traces_depth = 100;
     pmem.automatic_isa_rec = True;
     pmem.error_summary = True;
+
+    // iangneal: default true for log_stores
+    pmem.log_stores = True;
+    pmem.store_traces = True;
+    pmem.check_flush = False;
 }
 
 VG_DETERMINE_INTERFACE_VERSION(pmc_pre_clo_init)
