@@ -201,7 +201,7 @@ static void before ( char* fnname )
             opt_initkludge = True;
       }
       if (opt_verbosity > 0)
-         fprintf(stderr, "%s %5d: Active for pid %d\n", 
+         fprintf(stderr, "%s %5d: Active for pid %d\n",
                          preamble, my_pid, my_pid);
       /* Sanity check - that Word/UWord really are machine words. */
       assert(sizeof(Word)  == sizeof(void*));
@@ -232,8 +232,8 @@ static void before ( char* fnname )
          exit(1);
       }
       if (opt_verbosity > 0)
-         fprintf(stderr, 
-                 "%s %5d: Try MPIWRAP_DEBUG=help for possible options\n", 
+         fprintf(stderr,
+                 "%s %5d: Try MPIWRAP_DEBUG=help for possible options\n",
                  preamble, my_pid);
 
    }
@@ -244,7 +244,7 @@ static void before ( char* fnname )
 static __inline__ void after ( char* fnname, int err )
 {
    if (opt_verbosity > 1)
-      fprintf(stderr, "%s %5d:  exit PMPI_%s (err = %d)\n", 
+      fprintf(stderr, "%s %5d:  exit PMPI_%s (err = %d)\n",
                       preamble, my_pid, fnname, err );
 }
 
@@ -403,22 +403,22 @@ static void showCombiner ( FILE* f, int combiner )
 /* Note, PMPI_Comm_rank/size are themselves wrapped.  Should work
    fine. */
 
-static __inline__ int comm_rank ( MPI_Comm comm ) 
+static __inline__ int comm_rank ( MPI_Comm comm )
 {
    int err, r;
    err = PMPI_Comm_rank(comm, &r);
    return err ? 0/*arbitrary*/ : r;
 }
 
-static __inline__ int comm_size ( MPI_Comm comm ) 
+static __inline__ int comm_size ( MPI_Comm comm )
 {
    int err, r;
    err = PMPI_Comm_size(comm, &r);
    return err ? 0/*arbitrary*/ : r;
 }
 
-static __inline__ Bool count_from_Status( /*OUT*/int* recv_count, 
-                                      MPI_Datatype datatype, 
+static __inline__ Bool count_from_Status( /*OUT*/int* recv_count,
+                                      MPI_Datatype datatype,
                                       MPI_Status* status)
 {
    int n;
@@ -441,7 +441,7 @@ static __inline__ Bool count_from_Status( /*OUT*/int* recv_count,
    types that support assignment and equality operations."  Hence the
    following function should compile for any compliant definition of
    MPI_Request. */
-static __inline__ 
+static __inline__
 Bool eq_MPI_Request ( MPI_Request r1, MPI_Request r2 )
 {
    return r1 == r2;
@@ -492,8 +492,8 @@ static void maybeFreeTy ( MPI_Datatype* ty )
 
    /* some kinds of structs are predefined so we can't free them
       either. */
-   if (*ty == MPI_FLOAT_INT || *ty == MPI_DOUBLE_INT 
-       || *ty == MPI_LONG_INT || *ty == MPI_2INT 
+   if (*ty == MPI_FLOAT_INT || *ty == MPI_DOUBLE_INT
+       || *ty == MPI_LONG_INT || *ty == MPI_2INT
        || *ty == MPI_SHORT_INT || *ty == MPI_LONG_DOUBLE_INT)
       return;
 
@@ -614,7 +614,7 @@ static long sizeofOneNamedTy ( MPI_Datatype ty )
 
 
 /* Find the size of long double image (not 'sizeof(long double)').
-   See comments in sizeofOneNamedTy. 
+   See comments in sizeofOneNamedTy.
 */
 static long sizeof_long_double_image ( void )
 {
@@ -659,7 +659,7 @@ static long sizeof_long_double_image ( void )
    free(p);
    cached_result = i - 16;
 
-   if (0) 
+   if (0)
       printf("sizeof_long_double_image: computed %d\n", (int)cached_result);
 
    assert(cached_result == 10 || cached_result == 16 || cached_result == 8);
@@ -672,14 +672,14 @@ static long sizeof_long_double_image ( void )
 /*------------------------------------------------------------*/
 
 static __inline__
-void walk_type_array ( void(*f)(void*,long), char* base, 
+void walk_type_array ( void(*f)(void*,long), char* base,
                        MPI_Datatype ty, long count );
 
 
 /* Walk over all fragments of the object of type 'ty' with base
    address 'base', and apply 'f' to the start/length of each
    contiguous fragment. */
-static 
+static
 void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
 {
    int  r, n_ints, n_addrs, n_dtys, tycon;
@@ -759,7 +759,7 @@ void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
    if (0) {
       ex = extentOfTy(ty);
       printf("tycon 0x%llx %d %d %d (ext %d)\n",
-             (unsigned long long int)tycon, 
+             (unsigned long long int)tycon,
              n_ints, n_addrs, n_dtys, (int)ex );
    }
 
@@ -797,7 +797,7 @@ void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
          assert(n_ints == 3 && n_addrs == 0 && n_dtys == 1);
          ex = extentOfTy(dtys[0]);
          if (0)
-         printf("vector count %d x (bl %d stride %d)\n", 
+         printf("vector count %d x (bl %d stride %d)\n",
                 (int)ints[0], (int)ints[1], (int)ints[2]);
          for (i = 0; i < ints[0]; i++) {
             walk_type_array( f, base + i * ints[2]/*stride*/ * ex,
@@ -810,7 +810,7 @@ void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
          assert(n_ints == 2 && n_addrs == 1 && n_dtys == 1);
          ex = extentOfTy(dtys[0]);
          if (0)
-         printf("hvector count %d x (bl %d hstride %d)\n", 
+         printf("hvector count %d x (bl %d hstride %d)\n",
                 (int)ints[0], (int)ints[1], (int)addrs[0]);
          for (i = 0; i < ints[0]; i++) {
             walk_type_array( f, base + i * addrs[0]/*hstride*/,
@@ -825,10 +825,10 @@ void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
          assert(n_ints == 2 * ints[0] + 1);
          ex = extentOfTy(dtys[0]);
          for (i = 0; i < ints[0]; i++) {
-            if (0) 
+            if (0)
             printf("indexed (elem %d) off %d copies %d\n",
                    (int)i, ints[i+1+ints[0]], ints[i+1] );
-            walk_type_array( f, base + ex * ints[i+1+ints[0]], 
+            walk_type_array( f, base + ex * ints[i+1+ints[0]],
                                 dtys[0], ints[i+1] );
          }
          maybeFreeTy( &dtys[0] );
@@ -840,10 +840,10 @@ void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
          assert(n_addrs == ints[0] && n_dtys == 1);
          ex = extentOfTy(dtys[0]);
          for (i = 0; i < ints[0]; i++) {
-            if (0) 
+            if (0)
             printf("hindexed (elem %d) hoff %d copies %d\n",
                    (int)i, (int)addrs[i], ints[i+1] );
-            walk_type_array( f, base + addrs[i], 
+            walk_type_array( f, base + addrs[i],
                                 dtys[0], ints[i+1] );
          }
          maybeFreeTy( &dtys[0] );
@@ -856,7 +856,7 @@ void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
          assert(n_ints == ints[0] + 1);
 	 for (i = 0; i < ints[0]; i++) {
             if (0)
-            printf("struct (elem %d limit %d) hoff %d copies %d\n", 
+            printf("struct (elem %d limit %d) hoff %d copies %d\n",
                    (int)i, (int)ints[0], (int)addrs[i], (int)ints[i+1]);
             walk_type_array( f, base + addrs[i], dtys[i], (long)ints[i+1] );
             maybeFreeTy( &dtys[i] );
@@ -905,7 +905,7 @@ void walk_type ( void(*f)(void*,long), char* base, MPI_Datatype ty )
    where the array elements are contiguous and packed together without
    holes. */
 static __inline__
-void walk_type_array ( void(*f)(void*,long), char* base, 
+void walk_type_array ( void(*f)(void*,long), char* base,
                        MPI_Datatype elemTy, long count )
 {
    long i, ex;
@@ -958,7 +958,7 @@ void mpiwrap_walk_type_EXTERNALLY_VISIBLE
 /*------------------------------------------------------------*/
 
 /* ----------------
-   Do corresponding checks on memory areas defined using a 
+   Do corresponding checks on memory areas defined using a
    straightforward (start, length) description.
    ----------------
 */
@@ -988,7 +988,7 @@ void make_mem_defined_if_addressable_untyped ( void* buffer, long nbytes )
 }
 
 static __inline__
-void make_mem_defined_if_addressable_if_success_untyped ( int err, 
+void make_mem_defined_if_addressable_if_success_untyped ( int err,
                                        void* buffer, long nbytes )
 {
    if (err == MPI_SUCCESS && nbytes > 0) {
@@ -1035,8 +1035,8 @@ void make_mem_defined_if_addressable ( void *buffer, int count, MPI_Datatype dat
 }
 
 static __inline__
-void 
-make_mem_defined_if_addressable_if_success ( int err, void *buffer, int count, 
+void
+make_mem_defined_if_addressable_if_success ( int err, void *buffer, int count,
                                              MPI_Datatype datatype )
 {
    if (err == MPI_SUCCESS)
@@ -1074,7 +1074,7 @@ make_mem_defined_if_addressable_if_success ( int err, void *buffer, int count,
 /* --- {,B,S,R}Send --- */
 /* pre: rd: (buf,count,datatype) */
 static
-int generic_Send(void *buf, int count, MPI_Datatype datatype, 
+int generic_Send(void *buf, int count, MPI_Datatype datatype,
                             int dest, int tag, MPI_Comm comm)
 {
    OrigFn fn;
@@ -1088,19 +1088,19 @@ int generic_Send(void *buf, int count, MPI_Datatype datatype,
    after("{,B,S,R}Send", err);
    return err;
 }
-int WRAPPER_FOR(PMPI_Send)(void *buf, int count, MPI_Datatype datatype, 
+int WRAPPER_FOR(PMPI_Send)(void *buf, int count, MPI_Datatype datatype,
                            int dest, int tag, MPI_Comm comm) {
    return generic_Send(buf,count,datatype, dest,tag,comm);
 }
-int WRAPPER_FOR(PMPI_Bsend)(void *buf, int count, MPI_Datatype datatype, 
+int WRAPPER_FOR(PMPI_Bsend)(void *buf, int count, MPI_Datatype datatype,
                             int dest, int tag, MPI_Comm comm) {
    return generic_Send(buf,count,datatype, dest,tag,comm);
 }
-int WRAPPER_FOR(PMPI_Ssend)(void *buf, int count, MPI_Datatype datatype, 
+int WRAPPER_FOR(PMPI_Ssend)(void *buf, int count, MPI_Datatype datatype,
                             int dest, int tag, MPI_Comm comm) {
    return generic_Send(buf,count,datatype, dest,tag,comm);
 }
-int WRAPPER_FOR(PMPI_Rsend)(void *buf, int count, MPI_Datatype datatype, 
+int WRAPPER_FOR(PMPI_Rsend)(void *buf, int count, MPI_Datatype datatype,
                             int dest, int tag, MPI_Comm comm) {
    return generic_Send(buf,count,datatype, dest,tag,comm);
 }
@@ -1111,8 +1111,8 @@ int WRAPPER_FOR(PMPI_Rsend)(void *buf, int count, MPI_Datatype datatype,
    post: make readable: (buf,recv_count,datatype)
          where recv_count is determined from *status
 */
-int WRAPPER_FOR(PMPI_Recv)(void *buf, int count, MPI_Datatype datatype, 
-                           int source, int tag, 
+int WRAPPER_FOR(PMPI_Recv)(void *buf, int count, MPI_Datatype datatype,
+                           int source, int tag,
                            MPI_Comm comm, MPI_Status *status)
 {
    OrigFn     fn;
@@ -1139,7 +1139,7 @@ int WRAPPER_FOR(PMPI_Recv)(void *buf, int count, MPI_Datatype datatype,
 /* pre:  must be readable: *status
    post: make defined: *count -- don't bother, libmpi will surely do this
 */
-int WRAPPER_FOR(PMPI_Get_count)(MPI_Status* status, 
+int WRAPPER_FOR(PMPI_Get_count)(MPI_Status* status,
                                 MPI_Datatype ty, int* count )
 {
    OrigFn fn;
@@ -1235,7 +1235,7 @@ static void ensure_sReq_space ( void )
 
 /* Find shadow info for 'request', or NULL if none. */
 
-static 
+static
 ShadowRequest* find_shadow_Request ( MPI_Request request )
 {
    ShadowRequest* ret = NULL;
@@ -1270,9 +1270,9 @@ static void delete_shadow_Request ( MPI_Request request )
 
 /* Add a shadow for 'request', overwriting any old binding for it. */
 
-static 
-void add_shadow_Request( MPI_Request request, 
-                         void* buf, int count, 
+static
+void add_shadow_Request( MPI_Request request,
+                         void* buf, int count,
                          MPI_Datatype datatype )
 {
    int i, ix = -1;
@@ -1322,17 +1322,17 @@ void add_shadow_Request( MPI_Request request,
    UNLOCK_SREQS;
    if (opt_verbosity > 1)
       fprintf(stderr, "%s %5d: sReq+ 0x%lx -> b/c/d %p/%d/0x%lx [slot %d]\n",
-                      preamble, my_pid, (unsigned long)request, 
+                      preamble, my_pid, (unsigned long)request,
                                 buf, count, (long)datatype, ix);
 }
 
-static 
+static
 MPI_Request* clone_Request_array ( int count, MPI_Request* orig )
 {
    MPI_Request* copy;
    int i;
    LOCK_SREQS;
-   if (count < 0) 
+   if (count < 0)
       count = 0; /* Hmm.  Call Mulder and Scully. */
    copy = malloc( count * sizeof(MPI_Request) );
    if (copy == NULL && count > 0) {
@@ -1357,8 +1357,8 @@ static void maybe_complete ( Bool         error_in_status,
    int recv_count = 0;
    ShadowRequest* shadow;
    /* How do we know if this is an Irecv request that has now
-      finished successfully? 
-      
+      finished successfully?
+
       request_before isn't MPI_REQUEST_NULL
       and request_before is found in the shadow table
       and request_after *is* MPI_REQUEST_NULL
@@ -1388,8 +1388,8 @@ static void maybe_complete ( Bool         error_in_status,
 /* rd: (buf,count,datatype) */
 /* wr: *request */
 static __inline__
-int generic_Isend(void *buf, int count, MPI_Datatype datatype, 
-                             int dest, int tag, MPI_Comm comm, 
+int generic_Isend(void *buf, int count, MPI_Datatype datatype,
+                             int dest, int tag, MPI_Comm comm,
                              MPI_Request* request)
 {
    OrigFn fn;
@@ -1405,23 +1405,23 @@ int generic_Isend(void *buf, int count, MPI_Datatype datatype,
    after("{,B,S,R}Isend", err);
    return err;
 }
-int WRAPPER_FOR(PMPI_Isend)(void *buf, int count, MPI_Datatype datatype, 
-                            int dest, int tag, MPI_Comm comm, 
+int WRAPPER_FOR(PMPI_Isend)(void *buf, int count, MPI_Datatype datatype,
+                            int dest, int tag, MPI_Comm comm,
                             MPI_Request* request) {
    return generic_Isend(buf,count,datatype, dest,tag,comm, request);
 }
-int WRAPPER_FOR(PMPI_Ibsend)(void *buf, int count, MPI_Datatype datatype, 
-                             int dest, int tag, MPI_Comm comm, 
+int WRAPPER_FOR(PMPI_Ibsend)(void *buf, int count, MPI_Datatype datatype,
+                             int dest, int tag, MPI_Comm comm,
                              MPI_Request* request) {
    return generic_Isend(buf,count,datatype, dest,tag,comm, request);
 }
-int WRAPPER_FOR(PMPI_Issend)(void *buf, int count, MPI_Datatype datatype, 
-                             int dest, int tag, MPI_Comm comm, 
+int WRAPPER_FOR(PMPI_Issend)(void *buf, int count, MPI_Datatype datatype,
+                             int dest, int tag, MPI_Comm comm,
                              MPI_Request* request) {
    return generic_Isend(buf,count,datatype, dest,tag,comm, request);
 }
-int WRAPPER_FOR(PMPI_Irsend)(void *buf, int count, MPI_Datatype datatype, 
-                             int dest, int tag, MPI_Comm comm, 
+int WRAPPER_FOR(PMPI_Irsend)(void *buf, int count, MPI_Datatype datatype,
+                             int dest, int tag, MPI_Comm comm,
                              MPI_Request* request) {
    return generic_Isend(buf,count,datatype, dest,tag,comm, request);
 }
@@ -1430,11 +1430,11 @@ int WRAPPER_FOR(PMPI_Irsend)(void *buf, int count, MPI_Datatype datatype,
 /* --- Irecv --- */
 /* pre:  must be writable: (buf,count,datatype), *request
    post: make readable *request
-         add a request->(buf,count,ty) binding to the 
-         shadow request table. 
+         add a request->(buf,count,ty) binding to the
+         shadow request table.
 */
-int WRAPPER_FOR(PMPI_Irecv)( void* buf, int count, MPI_Datatype datatype, 
-                             int source, int tag, MPI_Comm comm, 
+int WRAPPER_FOR(PMPI_Irecv)( void* buf, int count, MPI_Datatype datatype,
+                             int source, int tag, MPI_Comm comm,
                              MPI_Request* request )
 {
    OrigFn fn;
@@ -1478,7 +1478,7 @@ int WRAPPER_FOR(PMPI_Wait)( MPI_Request* request,
    CALL_FN_W_WW(err, fn, request,status);
    if (cONFIG_DER) VALGRIND_ENABLE_ERROR_REPORTING;
    if (err == MPI_SUCCESS) {
-      maybe_complete(False/*err in status?*/, 
+      maybe_complete(False/*err in status?*/,
                      request_before, *request, status);
       make_mem_defined_if_addressable_untyped(status, sizeof(MPI_Status));
    }
@@ -1511,7 +1511,7 @@ int WRAPPER_FOR(PMPI_Waitany)( int count,
    CALL_FN_W_WWWW(err, fn, count,requests,index,status);
    if (cONFIG_DER) VALGRIND_ENABLE_ERROR_REPORTING;
    if (err == MPI_SUCCESS && *index >= 0 && *index < count) {
-      maybe_complete(False/*err in status?*/, 
+      maybe_complete(False/*err in status?*/,
                      requests_before[*index], requests[*index], status);
       make_mem_defined_if_addressable_untyped(status, sizeof(MPI_Status));
    }
@@ -1522,7 +1522,7 @@ int WRAPPER_FOR(PMPI_Waitany)( int count,
 }
 
 /* --- Waitall --- */
-int WRAPPER_FOR(PMPI_Waitall)( int count, 
+int WRAPPER_FOR(PMPI_Waitall)( int count,
                                MPI_Request* requests,
                                MPI_Status* statuses )
 {
@@ -1549,7 +1549,7 @@ int WRAPPER_FOR(PMPI_Waitall)( int count,
        || err == MPI_ERR_IN_STATUS /* partial success */) {
       Bool e_i_s = err == MPI_ERR_IN_STATUS;
       for (i = 0; i < count; i++) {
-         maybe_complete(e_i_s, requests_before[i], requests[i], 
+         maybe_complete(e_i_s, requests_before[i], requests[i],
                                &statuses[i]);
          make_mem_defined_if_addressable_untyped(&statuses[i],
                                                  sizeof(MPI_Status));
@@ -1565,7 +1565,7 @@ int WRAPPER_FOR(PMPI_Waitall)( int count,
 
 /* --- Test --- */
 /* nonblocking version of Wait */
-int WRAPPER_FOR(PMPI_Test)( MPI_Request* request, int* flag, 
+int WRAPPER_FOR(PMPI_Test)( MPI_Request* request, int* flag,
                             MPI_Status* status )
 {
    MPI_Request  request_before;
@@ -1584,7 +1584,7 @@ int WRAPPER_FOR(PMPI_Test)( MPI_Request* request, int* flag,
    CALL_FN_W_WWW(err, fn, request,flag,status);
    if (cONFIG_DER) VALGRIND_ENABLE_ERROR_REPORTING;
    if (err == MPI_SUCCESS && *flag) {
-      maybe_complete(False/*err in status?*/, 
+      maybe_complete(False/*err in status?*/,
                      request_before, *request, status);
       make_mem_defined_if_addressable_untyped(status, sizeof(MPI_Status));
    }
@@ -1623,7 +1623,7 @@ int WRAPPER_FOR(PMPI_Testall)( int count, MPI_Request* requests,
            || err == MPI_ERR_IN_STATUS /* partial success */)) {
       Bool e_i_s = err == MPI_ERR_IN_STATUS;
       for (i = 0; i < count; i++) {
-         maybe_complete(e_i_s, requests_before[i], requests[i], 
+         maybe_complete(e_i_s, requests_before[i], requests[i],
                                &statuses[i]);
          make_mem_defined_if_addressable_untyped(&statuses[i],
                                                  sizeof(MPI_Status));
@@ -1641,8 +1641,8 @@ int WRAPPER_FOR(PMPI_Testall)( int count, MPI_Request* requests,
 /* pre:  must-be-writable: *flag, *status */
 /* post: make-readable *flag
          if *flag==True  make-defined *status */
-int WRAPPER_FOR(PMPI_Iprobe)(int source, int tag, 
-                             MPI_Comm comm, 
+int WRAPPER_FOR(PMPI_Iprobe)(int source, int tag,
+                             MPI_Comm comm,
                              int* flag, MPI_Status* status)
 {
    MPI_Status fake_status;
@@ -1725,8 +1725,8 @@ int WRAPPER_FOR(PMPI_Cancel)(MPI_Request* request)
 */
 int WRAPPER_FOR(PMPI_Sendrecv)(
        void *sendbuf, int sendcount, MPI_Datatype sendtype,
-       int dest, int sendtag, 
-       void *recvbuf, int recvcount, MPI_Datatype recvtype, 
+       int dest, int sendtag,
+       void *recvbuf, int recvcount, MPI_Datatype recvtype,
        int source, int recvtag,
        MPI_Comm comm,  MPI_Status *status)
 {
@@ -1746,7 +1746,7 @@ int WRAPPER_FOR(PMPI_Sendrecv)(
                           comm,status);
    if (cONFIG_DER) VALGRIND_ENABLE_ERROR_REPORTING;
    make_mem_defined_if_addressable_if_success_untyped(err, status, sizeof(*status));
-   if (err == MPI_SUCCESS 
+   if (err == MPI_SUCCESS
        && count_from_Status(&recvcount_actual,recvtype,status)) {
       make_mem_defined_if_addressable(recvbuf, recvcount_actual, recvtype);
    }
@@ -1815,15 +1815,15 @@ int WRAPPER_FOR(PMPI_Type_free)( MPI_Datatype* ty )
 /* pre: must be readable: position
         must be readable: (inbuf,incount,datatype)
         must be writable: outbuf[0 .. outsize-1]
-        must be writable: outbuf[*position .. 
-                                 *position - 1 
-                                 + however much space PMPI_Pack_size 
+        must be writable: outbuf[*position ..
+                                 *position - 1
+                                 + however much space PMPI_Pack_size
                                    says we will need]
    post: make readable: outbuf[old *position .. new *position]
 */
-int WRAPPER_FOR(PMPI_Pack)( void* inbuf, int incount, MPI_Datatype datatype, 
-                            void* outbuf, int outsize, 
-                            int* position, MPI_Comm comm ) 
+int WRAPPER_FOR(PMPI_Pack)( void* inbuf, int incount, MPI_Datatype datatype,
+                            void* outbuf, int outsize,
+                            int* position, MPI_Comm comm )
 {
    OrigFn fn;
    int    err, szB = 0;
@@ -1839,7 +1839,7 @@ int WRAPPER_FOR(PMPI_Pack)( void* inbuf, int incount, MPI_Datatype datatype,
    /* check output area's actual used size properly */
    err = PMPI_Pack_size( incount, datatype, comm, &szB );
    if (err == MPI_SUCCESS && szB > 0) {
-      check_mem_is_addressable_untyped( 
+      check_mem_is_addressable_untyped(
          ((char*)outbuf) + position_ORIG, szB
       );
    }
@@ -1850,7 +1850,7 @@ int WRAPPER_FOR(PMPI_Pack)( void* inbuf, int incount, MPI_Datatype datatype,
 
    if (err == MPI_SUCCESS && (*position) > position_ORIG) {
       /* paint output */
-      make_mem_defined_if_addressable_untyped( 
+      make_mem_defined_if_addressable_untyped(
          ((char*)outbuf) + position_ORIG, *position - position_ORIG
       );
    }
@@ -1862,16 +1862,16 @@ int WRAPPER_FOR(PMPI_Pack)( void* inbuf, int incount, MPI_Datatype datatype,
 /* pre: must be readable: position
         must be writable: (outbuf,outcount,datatype)
         must be writable: outbuf[0 .. outsize-1]
-        must be writable: outbuf[*position .. 
-                                 *position - 1 
-                                 + however much space PMPI_Pack_size 
+        must be writable: outbuf[*position ..
+                                 *position - 1
+                                 + however much space PMPI_Pack_size
                                    says we will need]
    post: make readable: (outbuf,outcount,datatype)
          and also do a readability check of
          inbuf[old *position .. new *position]
 */
 int WRAPPER_FOR(PMPI_Unpack)( void* inbuf, int insize, int* position,
-                              void* outbuf, int outcount, MPI_Datatype datatype, 
+                              void* outbuf, int outcount, MPI_Datatype datatype,
                               MPI_Comm comm )
 {
    OrigFn fn;
@@ -1888,7 +1888,7 @@ int WRAPPER_FOR(PMPI_Unpack)( void* inbuf, int insize, int* position,
    /* check input area's actual used size properly */
    err = PMPI_Pack_size( outcount, datatype, comm, &szB );
    if (err == MPI_SUCCESS && szB > 0) {
-      check_mem_is_addressable_untyped( 
+      check_mem_is_addressable_untyped(
          ((char*)inbuf) + position_ORIG, szB
       );
    }
@@ -1899,7 +1899,7 @@ int WRAPPER_FOR(PMPI_Unpack)( void* inbuf, int insize, int* position,
 
    if (err == MPI_SUCCESS && (*position) > position_ORIG) {
       /* recheck input more carefully */
-      check_mem_is_defined_untyped( 
+      check_mem_is_defined_untyped(
          ((char*)inbuf) + position_ORIG, *position - position_ORIG
       );
       /* paint output */
@@ -1925,7 +1925,7 @@ int WRAPPER_FOR(PMPI_Unpack)( void* inbuf, int insize, int* position,
    V complains, but then all ranks, including itself, see the buffer
    as initialised after that.
 */
-int WRAPPER_FOR(PMPI_Bcast)(void *buffer, int count, 
+int WRAPPER_FOR(PMPI_Bcast)(void *buffer, int count,
                             MPI_Datatype datatype,
                             int root, MPI_Comm comm)
 {
@@ -1945,7 +1945,7 @@ int WRAPPER_FOR(PMPI_Bcast)(void *buffer, int count,
    if (cONFIG_DER) VALGRIND_ENABLE_ERROR_REPORTING;
    make_mem_defined_if_addressable_if_success(err, buffer, count, datatype);
    after("Bcast", err);
-   return err; 
+   return err;
 }
 
 
@@ -2071,9 +2071,9 @@ int WRAPPER_FOR(PMPI_Alltoall)(
 /* rd: (sendbuf,count,datatype) for all
    wr: (recvbuf,count,datatype) but only for rank == root
 */
-int WRAPPER_FOR(PMPI_Reduce)(void *sendbuf, void *recvbuf, 
+int WRAPPER_FOR(PMPI_Reduce)(void *sendbuf, void *recvbuf,
                              int count,
-                             MPI_Datatype datatype, MPI_Op op, 
+                             MPI_Datatype datatype, MPI_Op op,
                              int root, MPI_Comm comm)
 {
    OrigFn fn;
@@ -2099,9 +2099,9 @@ int WRAPPER_FOR(PMPI_Reduce)(void *sendbuf, void *recvbuf,
 /* rd: (sendbuf,count,datatype) for all
    wr: (recvbuf,count,datatype) for all
 */
-int WRAPPER_FOR(PMPI_Allreduce)(void *sendbuf, void *recvbuf, 
+int WRAPPER_FOR(PMPI_Allreduce)(void *sendbuf, void *recvbuf,
                                 int count,
-                                MPI_Datatype datatype, MPI_Op op, 
+                                MPI_Datatype datatype, MPI_Op op,
                                 MPI_Comm comm)
 {
    OrigFn fn;
@@ -2120,11 +2120,11 @@ int WRAPPER_FOR(PMPI_Allreduce)(void *sendbuf, void *recvbuf,
 
 
 /* --- Op_create --- */
-/* This is a bit dubious.  I suppose it takes 'function' and 
-   writes something at *op, but who knows what an MPI_Op is? 
+/* This is a bit dubious.  I suppose it takes 'function' and
+   writes something at *op, but who knows what an MPI_Op is?
    Can we safely do 'sizeof' on it? */
 int WRAPPER_FOR(PMPI_Op_create)( MPI_User_function* function,
-                                 int commute, 
+                                 int commute,
                                  MPI_Op* op )
 {
    OrigFn fn;
@@ -2245,7 +2245,7 @@ int WRAPPER_FOR(PMPI_Comm_size)(MPI_Comm comm, int *size)
 /*------------------------------------------------------------*/
 
 /* --- Error_string --- */
-int WRAPPER_FOR(PMPI_Error_string)( int errorcode, char* string, 
+int WRAPPER_FOR(PMPI_Error_string)( int errorcode, char* string,
                                     int* resultlen )
 {
    OrigFn fn;
