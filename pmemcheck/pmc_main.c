@@ -1643,10 +1643,12 @@ pmc_instrument(VgCallbackClosure *closure,
                     tl_assert(type != Ity_INVALID);
                     add_flush_event(sbOut, st->Ist.Flush.addr);
 
-		    /* treat clflush as strong memory ordered */
-		    if (st->Ist.Flush.fk == Ifk_flush)
-                       if (!pmem.weak_clflush)
-                          add_simple_event(sbOut, do_fence, "do_fence");
+                    /* treat clflush as strong memory ordered */
+                    if (st->Ist.Flush.fk == Ifk_flush) {
+                        if (!pmem.weak_clflush) {
+                            add_simple_event(sbOut, do_fence, "do_fence");
+                        }
+                    }
                 }
                 break;
             }
