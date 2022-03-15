@@ -1208,7 +1208,7 @@ do_flush(UWord base, UWord size)
             struct pmem_st flush_loc = {0};
             flush_loc.context = VG_(record_ExeContext)(VG_(get_running_tid)(), 0);
             pp_store_trace(&flush_loc, pmem.store_traces_depth);
-        }      
+        }
     }
 
     Bool valid_flush = False;
@@ -1650,10 +1650,12 @@ pmc_instrument(VgCallbackClosure *closure,
                     tl_assert(type != Ity_INVALID);
                     add_flush_event(sbOut, st->Ist.Flush.addr);
 
-		    /* treat clflush as strong memory ordered */
-		    if (st->Ist.Flush.fk == Ifk_flush)
-                       if (!pmem.weak_clflush)
-                          add_simple_event(sbOut, do_fence, "do_fence");
+                    /* treat clflush as strong memory ordered */
+                    if (st->Ist.Flush.fk == Ifk_flush) {
+                        if (!pmem.weak_clflush) {
+                            add_simple_event(sbOut, do_fence, "do_fence");
+                        }
+                    }
                 }
                 break;
             }
