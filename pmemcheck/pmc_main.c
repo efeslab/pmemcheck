@@ -127,6 +127,9 @@ static struct pmem_ops {
 
     /** Simulate 2-phase flushing. */
     Bool weak_clflush;
+
+    /** Track fence/flush operations at high or low granularity */
+    Bool log_redundant_ops;
 } pmem;
 
 /*
@@ -380,23 +383,23 @@ print_redundant_flush_error(UWord limit)
 static void
 print_store_ip_desc(UInt n, DiEpoch ep, Addr ip, void *uu_opaque)
 {
-   InlIPCursor *iipc = VG_(new_IIPC)(ep, ip);
+    InlIPCursor *iipc = VG_(new_IIPC)(ep, ip);
 
-   VG_(emit)(";");
+    VG_(emit)(";");
 
-   do {
-      const HChar *buf = VG_(describe_IP)(ep, ip, iipc);
+    do {
+        const HChar *buf = VG_(describe_IP)(ep, ip, iipc);
 
-      if (VG_(clo_xml))
-         VG_(printf_xml)("%s\n", buf);
-      else
-         VG_(emit)("%s", buf);
+        if (VG_(clo_xml))
+            VG_(printf_xml)("%s\n", buf);
+        else
+            VG_(emit)("%s", buf);
 
-      // Increase n to show "at" for only one level.
-      n++;
-   } while (VG_(next_IIPC)(iipc));
+        // Increase n to show "at" for only one level.
+        n++;
+    } while (VG_(next_IIPC)(iipc));
 
-   VG_(delete_IIPC)(iipc);
+    VG_(delete_IIPC)(iipc);
 }
 
 /**
@@ -1152,20 +1155,32 @@ add_event_dw(IRSB *sb, IRAtom *daddr, Int dsize, IRAtom *value)
 static void
 do_fence(void)
 {
-    if (pmem.log_stores)
-        VG_(emit)("|FENCE");
+    Bool fence_is_redundant = True;
 
     /* go through the stores and remove all flushed */
     VG_(OSetGen_ResetIter)(pmem.pmem_stores);
     struct pmem_st *being_fenced = NULL;
     while ((being_fenced = VG_(OSetGen_Next)(pmem.pmem_stores)) != NULL) {
         if (being_fenced->state == STST_FLUSHED) {
+            fence_is_redundant = False;
             /* remove it from the oset */
             struct pmem_st temp = *being_fenced;
             VG_(OSetGen_Remove)(pmem.pmem_stores, being_fenced);
             VG_(OSetGen_FreeNode)(pmem.pmem_stores, being_fenced);
             /* reset the iterator (remove invalidated store) */
             VG_(OSetGen_ResetIterAt)(pmem.pmem_stores, &temp);
+        }
+    }
+
+    if (pmem.log_stores) {
+        if (pmem.log_redundant_ops || !fence_is_redundant) {
+            VG_(emit)("|FENCE");
+            // iangneal: Improve trace information.
+            if (pmem.store_traces) {
+                struct pmem_st fence = {0};
+                fence.context = VG_(record_ExeContext)(VG_(get_running_tid)(), 0);
+                pp_store_trace(&fence, pmem.store_traces_depth);
+            }
         }
     }
 }
@@ -1183,6 +1198,7 @@ do_fence(void)
 static void
 do_flush(UWord base, UWord size)
 {
+
     struct pmem_st flush_info = {0};
 
     if (LIKELY(pmem.force_flush_align == False)) {
@@ -1194,20 +1210,25 @@ do_flush(UWord base, UWord size)
         flush_info.size = roundup(size, pmem.flush_align_size);
     }
 
-    if (pmem.log_stores) {
-        VG_(emit)("|FLUSH;0x%lx;0x%llx", flush_info.addr, flush_info.size);
-        // iangneal: improve traces
-        if (pmem.store_traces) {
-            struct pmem_st flush_loc = {0};
-            flush_loc.context = VG_(record_ExeContext)(VG_(get_running_tid)(), 0);
-            pp_store_trace(&flush_loc, pmem.store_traces_depth);
-        }
-    }
-
     Bool valid_flush = False;
 
     /* try to find any region that overlaps with what we want to flush */
     struct pmem_st *f = VG_(OSetGen_Lookup)(pmem.pmem_stores, &flush_info);
+
+    Bool flush_is_not_redundant = (NULL != f);
+
+    if (pmem.log_stores) {
+        if (pmem.log_redundant_ops || flush_is_not_redundant) {
+            VG_(emit)("|FLUSH;0x%lx;0x%llx", flush_info.addr, flush_info.size);
+            // iangneal: improve traces
+            if (pmem.store_traces) {
+                struct pmem_st flush_loc = {0};
+                flush_loc.context = VG_(record_ExeContext)(VG_(get_running_tid)(), 0);
+                pp_store_trace(&flush_loc, pmem.store_traces_depth);
+            }
+        }
+    }
+
     /*
      * If there's none, then there's no point in searching for the first one
      * and iterating - just skip to the end where we report unneeded flushes.
@@ -2022,6 +2043,7 @@ pmc_process_cmd_line_option(const HChar *arg)
     else if VG_BOOL_CLO(arg, "--log-stores-stacktraces", pmem.store_traces) {}
     else if VG_BINT_CLO(arg, "--log-stores-stacktraces-depth",
                         pmem.store_traces_depth, 1, UINT_MAX) {}
+    else if VG_BOOL_CLO(arg, "--log-redundant-ops", pmem.log_redundant_ops) {}
     else if VG_BOOL_CLO(arg, "--print-summary", pmem.print_summary) {}
     else if VG_BOOL_CLO(arg, "--flush-check", pmem.check_flush) {}
     else if VG_BOOL_CLO(arg, "--flush-align", pmem.force_flush_align) {}
@@ -2093,6 +2115,8 @@ pmc_print_usage(void)
             "                                           default [no]\n"
             "    --log-stores-stacktraces-depth=<uint>  depth of logged stacktraces\n"
             "                                           default [100]\n"
+            "    --log-redundant-ops                    log all fences/flushes, even if they don't complete pending flushes\n"
+            "                                           default [no]\n"
             "    --print-summary=<yes|no>               print summary on program exit\n"
             "                                           default [yes]\n"
             "    --flush-check=<yes|no>                 register multiple flushes of stores\n"
@@ -2173,6 +2197,7 @@ pmc_pre_clo_init(void)
     pmem.log_stores = True;
     pmem.store_traces = True;
     pmem.check_flush = False;
+    pmem.log_redundant_ops = False;
 }
 
 VG_DETERMINE_INTERFACE_VERSION(pmc_pre_clo_init)
