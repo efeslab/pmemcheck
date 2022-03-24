@@ -76,14 +76,14 @@ extern const HChar *ML_(find_fd_recorded_by_fd)(Int fd);
 extern
 Bool ML_(do_sigkill)(Int pid, Int tgid);
 
-/* When a client mmap or munmap has been successfully done, both the core 
+/* When a client mmap or munmap has been successfully done, both the core
    and the tool need to be notified of the new mapping.  Hence this fn. */
-extern void 
-ML_(notify_core_and_tool_of_mmap) ( Addr a, SizeT len, UInt prot, 
+extern void
+ML_(notify_core_and_tool_of_mmap) ( Addr a, SizeT len, UInt prot,
                                     UInt mm_flags, Int fd, Off64T offset );
-extern void 
+extern void
 ML_(notify_core_and_tool_of_munmap) ( Addr a, SizeT len );
-extern void 
+extern void
 ML_(notify_core_and_tool_of_mprotect) ( Addr a, SizeT len, Int prot );
 
 extern void
@@ -94,9 +94,9 @@ ML_(buf_and_len_post_check) ( ThreadId tid, SysRes res,
                               Addr buf_p, Addr buflen_p, const HChar* s );
 
 /* PRE and POST for unknown ioctls based on ioctl request encoding */
-extern 
+extern
 void ML_(PRE_unknown_ioctl)(ThreadId tid, UWord request, UWord arg);
-extern 
+extern
 void ML_(POST_unknown_ioctl)(ThreadId tid, UInt res, UWord request, UWord arg);
 
 extern
@@ -174,6 +174,7 @@ DECL_TEMPLATE(generic, sys_writev);
 DECL_TEMPLATE(generic, sys_getsid);
 DECL_TEMPLATE(generic, sys_fdatasync);
 DECL_TEMPLATE(generic, sys_mlock);
+DECL_TEMPLATE(generic, sys_mlock2);
 DECL_TEMPLATE(generic, sys_munlock);
 DECL_TEMPLATE(generic, sys_mlockall);
 DECL_TEMPLATE(generic, sys_nanosleep);
