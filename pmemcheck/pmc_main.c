@@ -2197,7 +2197,7 @@ pmc_pre_clo_init(void)
     pmem.log_stores = True;
     pmem.store_traces = True;
     pmem.check_flush = False;
-    pmem.log_redundant_ops = True;
+    pmem.log_redundant_ops = False;
 }
 
 VG_DETERMINE_INTERFACE_VERSION(pmc_pre_clo_init)
