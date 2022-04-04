@@ -1731,21 +1731,25 @@ pmc_instrument(VgCallbackClosure *closure,
                         opCasCmpEQ = Iop_CasCmpEQ8;
                         opOr = Iop_Or8;
                         opXor = Iop_Xor8;
+                        zero = make_expr(sbOut, loType, mkU8(0));
                         break;
                     case Ity_I16:
                         opCasCmpEQ = Iop_CasCmpEQ16;
                         opOr = Iop_Or16;
                         opXor = Iop_Xor16;
+                        zero = make_expr(sbOut, loType, mkU16(0));
                         break;
                     case Ity_I32:
                         opCasCmpEQ = Iop_CasCmpEQ32;
                         opOr = Iop_Or32;
                         opXor = Iop_Xor32;
+                        zero = make_expr(sbOut, loType, mkU32(0));
                         break;
                     case Ity_I64:
                         opCasCmpEQ = Iop_CasCmpEQ64;
                         opOr = Iop_Or64;
                         opXor = Iop_Xor64;
+                        zero = make_expr(sbOut, loType, mkU64(0));
                         break;
                     default:
                         tl_assert(0);
@@ -1765,8 +1769,12 @@ pmc_instrument(VgCallbackClosure *closure,
 
                     add_event_dw_guarded(sbOut, cas->addr, dataSize, guard,
                             cas->dataLo);
-                    add_event_dw_guarded(sbOut, cas->addr + dataSize,
-                            dataSize, guard, cas->dataHi);
+                    //add_event_dw_guarded(sbOut, cas->addr + dataSize,
+                    //        dataSize, guard, cas->dataHi);
+                    IRAtom* cas_addr_next = make_expr(sbOut,
+                        typeOfIRExpr(tyenv, cas->addr), cas->addr);
+                    add_event_dw_guarded(sbOut, cas_addr_next, dataSize, guard,
+                            cas->dataHi);
                 } else {
                     IRAtom *guard = make_expr(sbOut, Ity_I1, binop(opCasCmpEQ,
                             cas->expdLo, mkexpr(cas->oldLo)));
