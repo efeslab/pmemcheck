@@ -130,6 +130,9 @@ static struct pmem_ops {
 
     /** Track fence/flush operations at high or low granularity */
     Bool log_redundant_ops;
+
+    /** Registered file descriptors */
+    OSet *registered_fds;
 } pmem;
 
 /*
@@ -420,6 +423,29 @@ pp_store_trace(const struct pmem_st *store, UInt n_ips)
     DiEpoch ep = VG_(current_DiEpoch)();
     VG_(apply_StackTrace)(print_store_ip_desc, NULL, ep,
          VG_(get_ExeContext_StackTrace(store->context)), n_ips);
+
+    if (VG_(clo_xml))
+         VG_(printf_xml)("    </stack>\n");
+}
+
+/**
+ * \brief Prints stack trace.
+ *
+ * \details Print stack trace.
+ */
+static void
+pp_syscall_trace(ExeContext *context, UInt n_ips)
+{
+    n_ips = n_ips == 0 ? VG_(get_ExeContext_n_ips)(context) : n_ips;
+
+    tl_assert( n_ips > 0 );
+
+    if (VG_(clo_xml))
+         VG_(printf_xml)("    <stack>\n");
+
+    DiEpoch ep = VG_(current_DiEpoch)();
+    VG_(apply_StackTrace)(print_store_ip_desc, NULL, ep,
+         VG_(get_ExeContext_StackTrace(context)), n_ips);
 
     if (VG_(clo_xml))
          VG_(printf_xml)("    </stack>\n");
@@ -836,6 +862,27 @@ trace_pmem_store(Addr addr, SizeT size, UWord value)
 
     /* do transaction check */
     handle_tx_store(store);
+}
+
+/**
+* \brief Trace the write to a pmem file made by a syscall
+* \param[in] fd The file descriptor
+* \param[in] buf The address of the buffer that is written to the file
+* \param[in] size The size of the buffer in bytes.
+*/
+static VG_REGPARM(3) void
+trace_pmem_write(Int fd, Addr buf, SizeT size)
+{
+    if (pmem.log_stores) {
+        VG_(emit)("|WRITE;%d;", fd);
+        for (SizeT i = 0; i < size; ++i)
+            VG_(emit)("%c", ((char*)buf)[i]);
+        if (pmem.store_traces)
+            pp_syscall_trace(VG_(record_ExeContext)(VG_(get_running_tid)(), 0),
+                             pmem.store_traces_depth);
+    }
+
+    // TODO: Should some checks be done like in trace_pmem_store?
 }
 
 /**
@@ -1465,6 +1512,8 @@ register_new_file(Int fd, UWord base, UWord size, UWord offset)
     if (pmem.log_stores)
         VG_(emit)("|REGISTER_FILE;%s;0x%lx;0x%lx;0x%lx", file_name, base,
                 size, offset);
+
+    VG_(OSetWord_Insert)(pmem.registered_fds, fd);
 out:
     VG_(free)(file_name);
     return retval;
@@ -2038,6 +2087,76 @@ pmc_handle_client_request(ThreadId tid, UWord *arg, UWord *ret )
 }
 
 /**
+* \brief The hook for pre-system-call actions.
+* \param[in] tid Id of the calling thread.
+* \param[in] syscallno System call number.
+* \param[in] args Input arguments of the system call.
+* \param[in] nArgs Number of input arguments.
+*/
+static
+void pre_syscall(ThreadId tid, UInt syscallno,
+                 UWord* args, UInt nArgs)
+{
+}
+
+/**
+* \brief The hook for post-system-call actions.
+* \param[in] tid Id of the calling thread.
+* \param[in] syscallno System call number.
+* \param[in] args Input arguments of the system call.
+* \param[in] nArgs Number of input arguments.
+* \param[in] res System call result.
+*/
+static
+void post_syscall(ThreadId tid, UInt syscallno,
+                  UWord* args, UInt nArgs, SysRes res)
+{
+    Int fd;
+    Addr buf;
+    SizeT size;
+    Bool is_write = False;
+    Bool is_open = False;
+
+    if (sr_isError(res)) return;
+
+    // For syscall numbers, look at coregrind/m_syswrap/syswrap-ARCH-OS.c
+    switch (syscallno)
+    {
+        #if defined(VGP_amd64_linux)
+        case 1: // write
+        case 18: // pwrite64
+            is_write = True;
+            fd = args[0];
+            buf = args[1];
+            size = args[2];
+            break;
+        case 257: // openat
+            is_open = True;
+            //Int dirfd = args[0]; // dirfd is not a valid file descriptor
+            //fd = ...;
+            break;
+        #endif
+    }
+
+    if (is_write &&
+        VG_(OSetWord_Contains)(pmem.registered_fds, fd))
+    {
+        trace_pmem_write(fd, buf, size);
+    }
+    else if (is_open)
+    {
+        //register_new_file(fd, 0, 0, 0);
+
+        // Hossein: It is probably better to register a new (non-mmap'ed)
+        // file using VALGRIND_PMC_REGISTER_PMEM_FILE from the application
+        // code. This is because finding fd and whether the file is opened
+        // in the read or write mode may not be straightforward. (For example,
+        // openat may be used to open irrelevant files like shared objects.)
+    }
+}
+
+
+/**
 * \brief Handle tool command line arguments.
 * \param[in] arg Tool command line arguments.
 * \return True if the parameter is recognized, false otherwise.
@@ -2087,6 +2206,9 @@ pmc_post_clo_init(void)
 
     pmem.nonpmem_mappings = VG_(OSetGen_Create)(/*keyOff*/0, cmp_pmem_st,
             VG_(malloc), "pmc.main.cpci.5", VG_(free));
+
+    pmem.registered_fds = VG_(OSetWord_Create)(
+            VG_(malloc), "pmc.main.cpci.7", VG_(free));
 
     struct pmem_st temp_info = {0};
     temp_info.addr = 0;
@@ -2187,6 +2309,9 @@ pmc_pre_clo_init(void)
             pmc_print_usage, pmc_print_debug_usage);
 
     VG_(needs_client_requests)(pmc_handle_client_request);
+
+    // hosseingolestani: Added for tracing regular file system stuff
+    VG_(needs_syscall_wrapper)(&pre_syscall, &post_syscall);
 
     /* support only 64 bit architectures */
     tl_assert(VG_WORDSIZE == 8);
