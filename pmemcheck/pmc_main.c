@@ -1512,8 +1512,10 @@ register_new_file(Int fd, UWord base, UWord size, UWord offset)
     if (pmem.log_stores)
         VG_(emit)("|REGISTER_FILE;%s;0x%lx;0x%lx;0x%lx", file_name, base,
                 size, offset);
-
-    VG_(OSetWord_Insert)(pmem.registered_fds, fd);
+    
+    if (!VG_(OSetWord_Contains)(pmem.registered_fds, fd)) {
+        VG_(OSetWord_Insert)(pmem.registered_fds, fd);
+    }
 out:
     VG_(free)(file_name);
     return retval;
