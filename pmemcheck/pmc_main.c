@@ -2117,7 +2117,7 @@ void post_syscall(ThreadId tid, UInt syscallno,
     Addr buf;
     SizeT size;
     Bool is_write = False;
-    Bool is_open = False;
+    Bool is_open_for_write = False;
 
     if (sr_isError(res)) return;
 
@@ -2132,28 +2132,23 @@ void post_syscall(ThreadId tid, UInt syscallno,
             buf = args[1];
             size = args[2];
             break;
+        case 2: // open
         case 257: // openat
-            is_open = True;
-            //Int dirfd = args[0]; // dirfd is not a valid file descriptor
-            //fd = ...;
+            fd = sr_Res(res); // The system call returns the file descriptor
+            Int flags = args[2];
+            is_open_for_write = flags & (VKI_O_WRONLY | VKI_O_RDWR);
             break;
         #endif
     }
 
     if (is_write &&
-        VG_(OSetWord_Contains)(pmem.registered_fds, fd))
+        VG_(OSetWord_Contains)(pmem.registered_fds, fd)) // Write to a registered file?
     {
         trace_pmem_write(fd, buf, size);
     }
-    else if (is_open)
+    else if (is_open_for_write)
     {
-        //register_new_file(fd, 0, 0, 0);
-
-        // Hossein: It is probably better to register a new (non-mmap'ed)
-        // file using VALGRIND_PMC_REGISTER_PMEM_FILE from the application
-        // code. This is because finding fd and whether the file is opened
-        // in the read or write mode may not be straightforward. (For example,
-        // openat may be used to open irrelevant files like shared objects.)
+        register_new_file(fd, 0, 0, 0);
     }
 }
 
