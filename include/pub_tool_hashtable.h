@@ -47,6 +47,13 @@ typedef
    }
    VgHashNode;
 
+typedef
+   struct _VgHashNameNode {
+      VgHashNode node;
+      char* value;
+   }
+   VgHashNameNode;
+
 typedef struct _VgHashTable VgHashTable;
 
 /* Make a new table.  Allocates the memory with VG_(calloc)(), so can

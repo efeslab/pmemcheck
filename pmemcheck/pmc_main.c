@@ -31,6 +31,7 @@
 #include "pub_tool_machine.h"
 #include "pub_tool_stacktrace.h"
 #include "pub_tool_debuginfo.h"
+#include "pub_tool_hashtable.h"
 
 #include "pmemcheck.h"
 #include "pmc_include.h"
@@ -133,6 +134,9 @@ static struct pmem_ops {
 
     /** Registered file descriptors */
     OSet *registered_fds;
+
+    /** Map file descripters to file names */
+    VgHashTable *fd_map;    
 } pmem;
 
 /*
@@ -873,8 +877,11 @@ trace_pmem_store(Addr addr, SizeT size, UWord value)
 static VG_REGPARM(3) void
 trace_pmem_write(Int fd, Addr buf, SizeT size)
 {
+    VgHashNameNode *name_node = (VgHashNameNode *) VG_(HT_lookup) (pmem.fd_map, (UWord) fd);
+    tl_assert(name_node != NULL);
+    char* file_name = name_node->value;
     if (pmem.log_stores) {
-        VG_(emit)("|WRITE;%d;", fd);
+        VG_(emit)("|WRITE;%s;", file_name);
         for (SizeT i = 0; i < size; ++i)
             VG_(emit)("%c", ((char*)buf)[i]);
         if (pmem.store_traces)
@@ -1515,9 +1522,20 @@ register_new_file(Int fd, UWord base, UWord size, UWord offset)
     
     if (!VG_(OSetWord_Contains)(pmem.registered_fds, fd)) {
         VG_(OSetWord_Insert)(pmem.registered_fds, fd);
+        // create a new node
+        VgHashNameNode *name_node = (VgHashNameNode *) VG_(malloc)("pmc.main.nfcc", sizeof(VgHashNameNode));
+        name_node->node.key = (UWord) fd;
+        name_node->value = file_name;
+        VG_(HT_add_node)(pmem.fd_map, (void*) name_node);
+    } else {
+        //update the file name of old node
+        VgHashNameNode *name_node = (VgHashNameNode *) VG_(HT_lookup)(pmem.fd_map, (UWord) fd);
+        VG_(free) (name_node->value);
+        name_node->value = file_name;
+
     }
 out:
-    VG_(free)(file_name);
+    // VG_(free)(file_name);
     return retval;
 }
 
@@ -2207,6 +2225,8 @@ pmc_post_clo_init(void)
     pmem.registered_fds = VG_(OSetWord_Create)(
             VG_(malloc), "pmc.main.cpci.7", VG_(free));
 
+    pmem.fd_map = VG_(HT_construct)("pmc.main.cpci.8");
+
     struct pmem_st temp_info = {0};
     temp_info.addr = 0;
     temp_info.size = ULONG_MAX;
@@ -2284,6 +2304,16 @@ pmc_fini(Int exitcode)
 
     if (pmem.print_summary)
         print_pmem_stats(False);
+        
+    // clean fd_map
+    VG_(HT_ResetIter) (pmem.fd_map);
+    VgHashNameNode *name_node = (VgHashNameNode*) VG_(HT_Next)(pmem.fd_map);
+    while (name_node != NULL) {
+        VG_(HT_remove_at_Iter)(pmem.fd_map);
+        VG_(free)(name_node->value);
+        VG_(free)(name_node);
+        name_node = (VgHashNameNode*) VG_(HT_Next)(pmem.fd_map);
+    }
 }
 
 /**
