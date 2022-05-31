@@ -1540,6 +1540,49 @@ out:
 }
 
 /**
+* \brief Register a file opened for file write events, no address, size, and offset are needed.
+* \param[in] fd The file descriptor to be registered.
+*/
+static UInt
+register_new_write_file(Int fd)
+{
+    char fd_path[64];
+    VG_(sprintf(fd_path, "/proc/self/fd/%d", fd));
+    UInt retval = 0;
+
+    char *file_name = VG_(malloc)("pmc.main.nfcc", MAX_PATH_SIZE);
+    int read_length = VG_(readlink)(fd_path, file_name, MAX_PATH_SIZE - 1);
+    if (read_length <= 0) {
+        retval = 1;
+        goto out;
+    }
+
+    file_name[read_length] = 0;
+
+    /* logging_on shall have no effect on this */
+    if (pmem.log_stores)
+        VG_(emit)("|REGISTER_WRITE_FILE;%s", file_name);
+    
+    if (!VG_(OSetWord_Contains)(pmem.registered_fds, fd)) {
+        VG_(OSetWord_Insert)(pmem.registered_fds, fd);
+        // create a new node
+        VgHashNameNode *name_node = (VgHashNameNode *) VG_(malloc)("pmc.main.nfcc", sizeof(VgHashNameNode));
+        name_node->node.key = (UWord) fd;
+        name_node->value = file_name;
+        VG_(HT_add_node)(pmem.fd_map, (void*) name_node);
+    } else {
+        //update the file name of old node
+        VgHashNameNode *name_node = (VgHashNameNode *) VG_(HT_lookup)(pmem.fd_map, (UWord) fd);
+        VG_(free) (name_node->value);
+        name_node->value = file_name;
+
+    }
+out:
+    // VG_(free)(file_name);
+    return retval;
+}
+
+/**
  * \brief Print the summary of whole analysis.
  */
 static void
@@ -2166,7 +2209,7 @@ void post_syscall(ThreadId tid, UInt syscallno,
     }
     else if (is_open_for_write)
     {
-        register_new_file(fd, 0, 0, 0);
+        register_new_write_file(fd);
     }
 }
 
