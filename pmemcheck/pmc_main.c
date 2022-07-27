@@ -17,6 +17,7 @@
  * This program is based on lackey, cachegrind and memcheck.
  */
 #include <sys/param.h>
+#include <sys/uio.h>
 #include "pub_tool_libcfile.h"
 #include <fcntl.h>
 #include "pub_tool_oset.h"
@@ -890,6 +891,40 @@ trace_pmem_write(Int fd, Addr buf, SizeT size)
     }
 
     // TODO: Should some checks be done like in trace_pmem_store?
+}
+
+/**
+* \brief Trace the pwritev to a pmem file made by a syscall
+* \param[in] fd The file descriptor
+* \param[in] iov The start address of the buffer array being written to the file
+* \param[in] iovcnt The number of elements in the buffer array
+* \param[in] offset The offset into the file being written
+*/
+static VG_REGPARM(3) void
+trace_pmem_pwritev(Int fd, struct iovec* iov, Int iovcnt, off_t offset)
+{
+    VgHashNameNode *name_node = (VgHashNameNode *) VG_(HT_lookup) (pmem.fd_map, (UWord) fd);
+    tl_assert(name_node != NULL);
+    tl_assert(iovcnt >= 1);
+    char* file_name = name_node->value;
+    if (pmem.log_stores) { // could change to log_writes
+        VG_(emit)("|PWRITEV;%s;", file_name);
+        VG_(emit)("%ld;", offset);
+        VG_(emit)("%d;", iovcnt);
+        for (Int i = 0; i < iovcnt; ++i) {
+            void* iov_base = iov[i].iov_base;
+            size_t iov_len = iov[i].iov_len;
+            for (size_t j = 0; j < iov_len; j++) {
+                VG_(emit)("%c", ((char *)iov_base)[j]);
+            }
+            if (i != iovcnt - 1) VG_(emit)(";");
+        }
+        if (pmem.store_traces)
+            pp_syscall_trace(VG_(record_ExeContext)(VG_(get_running_tid)(), 0),
+                             pmem.store_traces_depth);
+    }
+
+ 
 }
 
 /**
@@ -2179,6 +2214,11 @@ void post_syscall(ThreadId tid, UInt syscallno,
     SizeT size;
     Bool is_write = False;
     Bool is_open_for_write = False;
+    // for pwritev
+    struct iovec* iov;
+    Int iovcnt;
+    Bool is_pwritev = False;
+    off_t pwrite_offset; 
 
     if (sr_isError(res)) return;
 
@@ -2192,12 +2232,20 @@ void post_syscall(ThreadId tid, UInt syscallno,
             fd = args[0];
             buf = args[1];
             size = args[2];
+            // Yile: has to consider the file offset used for pwrite64?
             break;
         case 2: // open
         case 257: // openat
             fd = sr_Res(res); // The system call returns the file descriptor
             Int flags = args[2];
             is_open_for_write = flags & (VKI_O_WRONLY | VKI_O_RDWR);
+            break;
+        case 296: // pwritev
+            is_pwritev = True;
+            fd = args[0];
+            iov = args[1];
+            iovcnt = args[2];
+            pwrite_offset = args[3];
             break;
         #endif
     }
@@ -2206,6 +2254,9 @@ void post_syscall(ThreadId tid, UInt syscallno,
         VG_(OSetWord_Contains)(pmem.registered_fds, fd)) // Write to a registered file?
     {
         trace_pmem_write(fd, buf, size);
+    }
+    else if (is_pwritev && VG_(OSetWord_Contains)(pmem.registered_fds, fd)) {
+        trace_pmem_pwritev(fd, iov, iovcnt, pwrite_offset);
     }
     else if (is_open_for_write)
     {
