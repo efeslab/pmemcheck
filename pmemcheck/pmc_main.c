@@ -856,7 +856,7 @@ trace_pmem_store(Addr addr, SizeT size, UWord value)
 
     /* log the store, regardless if it is a double store */
     if (pmem.log_stores) {
-        VG_(emit)("|STORE;0x%lx;0x%lx;0x%lx", addr, value, size);
+        VG_(emit)("||STORE;0x%lx;0x%lx;0x%lx", addr, value, size);
         if (pmem.store_traces)
             pp_store_trace(store, pmem.store_traces_depth);
     }
@@ -882,9 +882,14 @@ trace_pmem_write(Int fd, Addr buf, SizeT size)
     tl_assert(name_node != NULL);
     char* file_name = name_node->value;
     if (pmem.log_stores) {
-        VG_(emit)("|WRITE;%s;", file_name);
+        VG_(emit)("||WRITE;%s;", file_name);
+        // add begin/end marks to avoid parser bug
+        // VG_(emit)('\"'); 
         for (SizeT i = 0; i < size; ++i)
-            VG_(emit)("%c", ((char*)buf)[i]);
+            if (((char*)buf)[i] != '\n' && ((char*)buf)[i] != ';') VG_(emit)("%c", ((char*)buf)[i]);
+            else if (((char*)buf)[i] == '\n') VG_(emit)("NEWLINE");
+            else VG_(emit)("SEMICOMMA");
+        // VG_(emit)('\"');
         if (pmem.store_traces)
             pp_syscall_trace(VG_(record_ExeContext)(VG_(get_running_tid)(), 0),
                              pmem.store_traces_depth);
@@ -908,17 +913,22 @@ trace_pmem_pwritev(Int fd, struct iovec* iov, Int iovcnt, off_t offset)
     tl_assert(iovcnt >= 1);
     char* file_name = name_node->value;
     if (pmem.log_stores) { // could change to log_writes
-        VG_(emit)("|PWRITEV;%s;", file_name);
+        VG_(emit)("||PWRITEV;%s;", file_name);
         VG_(emit)("%ld;", offset);
         VG_(emit)("%d;", iovcnt);
+        // add begin/end marks to avoid parser bug
+        // VG_(emit)('\"');
         for (Int i = 0; i < iovcnt; ++i) {
             void* iov_base = iov[i].iov_base;
             size_t iov_len = iov[i].iov_len;
             for (size_t j = 0; j < iov_len; j++) {
-                VG_(emit)("%c", ((char *)iov_base)[j]);
+                if (((char *)iov_base)[j] != '\n' && ((char *)iov_base)[j] != ';') VG_(emit)("%c", ((char *)iov_base)[j]);
+                else if (((char *)iov_base)[j] == '\n') VG_(emit)("NEWLINE");
+                else VG_(emit)("SEMICOMMA");
             }
             if (i != iovcnt - 1) VG_(emit)(";");
         }
+        // VG_(emit)('\"');
         if (pmem.store_traces)
             pp_syscall_trace(VG_(record_ExeContext)(VG_(get_running_tid)(), 0),
                              pmem.store_traces_depth);
@@ -1263,7 +1273,7 @@ do_fence(void)
 
     if (pmem.log_stores) {
         if (pmem.log_redundant_ops || !fence_is_redundant) {
-            VG_(emit)("|FENCE");
+            VG_(emit)("||FENCE");
             // iangneal: Improve trace information.
             if (pmem.store_traces) {
                 struct pmem_st fence = {0};
@@ -1308,7 +1318,7 @@ do_flush(UWord base, UWord size)
 
     if (pmem.log_stores) {
         if (pmem.log_redundant_ops || flush_is_not_redundant) {
-            VG_(emit)("|FLUSH;0x%lx;0x%llx", flush_info.addr, flush_info.size);
+            VG_(emit)("||FLUSH;0x%lx;0x%llx", flush_info.addr, flush_info.size);
             // iangneal: improve traces
             if (pmem.store_traces) {
                 struct pmem_st flush_loc = {0};
@@ -1552,7 +1562,7 @@ register_new_file(Int fd, UWord base, UWord size, UWord offset)
 
     /* logging_on shall have no effect on this */
     if (pmem.log_stores)
-        VG_(emit)("|REGISTER_FILE;%s;0x%lx;0x%lx;0x%lx", file_name, base,
+        VG_(emit)("||REGISTER_FILE;%s;0x%lx;0x%lx;0x%lx", file_name, base,
                 size, offset);
     
     if (!VG_(OSetWord_Contains)(pmem.registered_fds, fd)) {
@@ -1596,7 +1606,7 @@ register_new_write_file(Int fd)
 
     /* logging_on shall have no effect on this */
     if (pmem.log_stores)
-        VG_(emit)("|REGISTER_WRITE_FILE;%s", file_name);
+        VG_(emit)("||REGISTER_WRITE_FILE;%s", file_name);
     
     if (!VG_(OSetWord_Contains)(pmem.registered_fds, fd)) {
         VG_(OSetWord_Insert)(pmem.registered_fds, fd);
@@ -2071,7 +2081,7 @@ pmc_handle_client_request(ThreadId tid, UWord *arg, UWord *ret )
 
         case VG_USERREQ__PMC_EMIT_LOG: {
             if (pmem.log_stores) {
-                VG_(emit)("|%s", (char *)arg[1]);
+                VG_(emit)("||%s", (char *)arg[1]);
             }
             break;
         }
@@ -2169,7 +2179,7 @@ pmc_handle_client_request(ThreadId tid, UWord *arg, UWord *ret )
 
         case VG_USERREQ__PMC_DEEP_SYNC:
             if (pmem.log_stores)
-                VG_(emit)("|DEEP_SYNC;0x%lx;0x%lx", arg[1], arg[2]);
+                VG_(emit)("||DEEP_SYNC;0x%lx;0x%lx", arg[1], arg[2]);
 
             break;
 
@@ -2394,7 +2404,7 @@ static void
 pmc_fini(Int exitcode)
 {
     if (pmem.log_stores)
-        VG_(emit)("|STOP\n");
+        VG_(emit)("||STOP\n");
 
     if (pmem.print_summary)
         print_pmem_stats(False);
