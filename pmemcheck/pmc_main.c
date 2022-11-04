@@ -2274,6 +2274,7 @@ void post_syscall(ThreadId tid, UInt syscallno,
     off_t offset; 
     Int mode;
     off_t len;
+    Int flags;
 
     if (sr_isError(res)) return;
 
@@ -2290,10 +2291,16 @@ void post_syscall(ThreadId tid, UInt syscallno,
             // Yile: has to consider the file offset used for pwrite64?
             break;
         case 2: // open
+            fd = sr_Res(res); // The system call returns the file descriptor
+            flags = args[1];
+            is_open_for_write = flags;
+            VG_(umsg)("PMEMCHECK: caught open w/ flags %d\n", flags);
+            break;
         case 257: // openat
             fd = sr_Res(res); // The system call returns the file descriptor
-            Int flags = args[2];
-            is_open_for_write = flags & (VKI_O_WRONLY | VKI_O_RDWR);
+            flags = args[2];
+            is_open_for_write = flags;
+            VG_(umsg)("PMEMCHECK: caught openat w/ flags %d \n", flags);
             break;
         case 77: // ftruncate
             fd = args[0];
