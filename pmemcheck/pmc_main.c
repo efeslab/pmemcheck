@@ -938,6 +938,49 @@ trace_pmem_pwritev(Int fd, struct iovec* iov, Int iovcnt, off_t offset)
 }
 
 /**
+* \brief Trace the ftruncate syscall to a file
+* \param[in] fd The file descriptor
+* \param[in] len The length that the file should be truncated to
+*/
+static VG_REGPARM(3) void
+trace_ftruncate(Int fd, off_t len)
+{
+    VgHashNameNode *name_node = (VgHashNameNode *) VG_(HT_lookup) (pmem.fd_map, (UWord) fd);
+    tl_assert(name_node != NULL);
+    char* file_name = name_node->value;
+    if (pmem.log_stores) { // could change to log_writes
+        VG_(emit)("||FTRUNCATE;%s;", file_name);
+        VG_(emit)("%ld", len);
+        if (pmem.store_traces)
+            pp_syscall_trace(VG_(record_ExeContext)(VG_(get_running_tid)(), 0),
+                             pmem.store_traces_depth);
+    }
+}
+
+/**
+* \brief Trace the fallocate syscall to a file
+* \param[in] fd The file descriptor
+* \param[in] len The length that the file should be truncated to
+*/
+static VG_REGPARM(3) void
+trace_fallocate(Int fd, Int mode, off_t offset, off_t len)
+{
+    VgHashNameNode *name_node = (VgHashNameNode *) VG_(HT_lookup) (pmem.fd_map, (UWord) fd);
+    tl_assert(name_node != NULL);
+    char* file_name = name_node->value;
+    if (pmem.log_stores) { // could change to log_writes
+        VG_(emit)("||FALLOCATE;%s;", file_name);
+        VG_(emit)("%d;", mode);
+        VG_(emit)("%ld;", offset);
+        VG_(emit)("%ld", len);
+        if (pmem.store_traces)
+            pp_syscall_trace(VG_(record_ExeContext)(VG_(get_running_tid)(), 0),
+                             pmem.store_traces_depth);
+    }
+}
+
+
+/**
 * \brief Register the entry of a new SB.
 *
 * Useful when handling implementation independent multiple writes under
@@ -2228,7 +2271,9 @@ void post_syscall(ThreadId tid, UInt syscallno,
     struct iovec* iov;
     Int iovcnt;
     Bool is_pwritev = False;
-    off_t pwrite_offset; 
+    off_t offset; 
+    Int mode;
+    off_t len;
 
     if (sr_isError(res)) return;
 
@@ -2250,12 +2295,25 @@ void post_syscall(ThreadId tid, UInt syscallno,
             Int flags = args[2];
             is_open_for_write = flags & (VKI_O_WRONLY | VKI_O_RDWR);
             break;
+        case 77: // ftruncate
+            fd = args[0];
+            len = args[1];
+            trace_ftruncate(fd, len);
+            break;
+        case 285: // fallocate
+            fd = args[0];
+            mode = args[1];
+            offset = args[2];
+            len = args[3];
+            trace_fallocate(fd, mode, offset, len);
+            break;
+
         case 296: // pwritev
             is_pwritev = True;
             fd = args[0];
             iov = args[1];
             iovcnt = args[2];
-            pwrite_offset = args[3];
+            offset = args[3];
             break;
         #endif
     }
@@ -2266,7 +2324,7 @@ void post_syscall(ThreadId tid, UInt syscallno,
         trace_pmem_write(fd, buf, size);
     }
     else if (is_pwritev && VG_(OSetWord_Contains)(pmem.registered_fds, fd)) {
-        trace_pmem_pwritev(fd, iov, iovcnt, pwrite_offset);
+        trace_pmem_pwritev(fd, iov, iovcnt, offset);
     }
     else if (is_open_for_write)
     {
